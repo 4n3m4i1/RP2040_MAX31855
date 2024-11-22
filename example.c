@@ -31,8 +31,10 @@ uint16_t hacky_fixed_point_converter(uint16_t in){
     return retval;
 }
 
-void main(){
+#define USE_AVERAGING
+#define AVERAGING_CTS       4
 
+void main(){
     stdio_init_all();
     //stdio_usb_init();
 
@@ -53,7 +55,29 @@ void main(){
 
     gpio_put(PICO_DEFAULT_LED_PIN, 0);
 
+#ifdef USE_AVERAGING
+    int32_t rolling_avg_tcpl = 0;
+    int32_t rolling_avg_case = 0;
+#endif
+
+
     while(1){
+#ifdef USE_AVERAGING
+        for(int n = 0; n < AVERAGING_CTS; ++n){
+            MAX31855_Read_Blocking(spi0, &max);
+            rolling_avg_tcpl += max.thermocouple_temp;
+            rolling_avg_case += max.case_temp;
+            busy_wait_ms(_MAX_31855_MAX_CVT_TIME_MS);
+        }
+
+        rolling_avg_tcpl >>= 2;
+        rolling_avg_case >>= 2;
+
+        uint16_t tcpl_frac = hacky_fixed_point_converter(*((uint16_t *)&rolling_avg_tcpl));
+        uint16_t case_frac = hacky_fixed_point_converter(*((uint16_t *)&rolling_avg_case));
+
+        printf("TCPL: %4d.%d\tAMB: %4d.%d\n", MAX31855_FIX_2_INT(rolling_avg_tcpl), tcpl_frac, MAX31855_FIX_2_INT(rolling_avg_case), case_frac);
+#else
         MAX31855_Read_Blocking(spi0, &max);
 
         uint16_t tcpl_frac = hacky_fixed_point_converter(*((uint16_t *)&max.thermocouple_temp));
@@ -62,11 +86,12 @@ void main(){
         printf("Raw: 0x%02X %02X %02X %02X  ", max.ingest.raw_bytes[3], max.ingest.raw_bytes[2], max.ingest.raw_bytes[1], max.ingest.raw_bytes[0]);
 
         printf("TCPL: %4d.%d\tAMB: %4d.%d\n", MAX31855_FIX_2_INT(max.thermocouple_temp), tcpl_frac, MAX31855_FIX_2_INT(max.case_temp), case_frac);
-
+        busy_wait_ms(500);
+#endif
         gpio_put(PICO_DEFAULT_LED_PIN, (gpio_get_out_level(PICO_DEFAULT_LED_PIN)) ? 0 : 1);
 
 
-        busy_wait_ms(500);
+        
     }
 
 }
