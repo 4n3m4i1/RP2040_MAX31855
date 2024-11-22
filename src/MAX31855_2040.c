@@ -6,7 +6,8 @@ uint MAX31855_SPI_INIT(struct MAX31855_DATA *max_data, spi_inst_t *spi, uint bau
                         uint CS_PIN, uint SPI_RX_PIN, uint SPI_SCK_PIN){
     
     uint ret_baud = spi_init(spi, baudrate);
-    spi_set_format(spi, 32, 0, 0, SPI_MSB_FIRST);
+    // Should be noted the endianness is not corrected with MSB or LSB first on here, annoying :(
+    spi_set_format(spi, 8, 0, 0, SPI_MSB_FIRST);
 
     gpio_init_mask(CS_PIN | SPI_RX_PIN | SPI_SCK_PIN);
     
@@ -33,7 +34,7 @@ void __MAX31855_Convert_Raw_Read(struct MAX31855_DATA *max_data){
     max_data->thermocouple_temp = (int16_t)((max_data->ingest.raw >> 16) & 0xFFFC);
 
     // Fixed Point
-    max_data->case_temp = (int16_t)(max_data->ingest.raw & 0xFFF0);
+    max_data->case_temp = (int16_t)(max_data->ingest.raw & 0xFFF0) >> 4;
 
     // Error bitfield
     max_data->fault_bitfield = (uint8_t)(((max_data->ingest.raw & (1u << 16)) >> 12) & (max_data->ingest.raw & 0x07));
@@ -44,6 +45,17 @@ void MAX31855_Read_Blocking(spi_inst_t *spi, struct MAX31855_DATA *max_data){
     gpio_put(max_data->cs_pin, 0);
     spi_read_blocking(spi, 0x00, max_data->ingest.raw_bytes, sizeof(uint32_t));
     gpio_put(max_data->cs_pin, 1);
+
+    // Flip bytes to correct endianness
+    uint8_t tmp = max_data->ingest.raw_bytes[0];
+    max_data->ingest.raw_bytes[0] = max_data->ingest.raw_bytes[3];
+    max_data->ingest.raw_bytes[3] = tmp;
+    
+    tmp = max_data->ingest.raw_bytes[1];
+    max_data->ingest.raw_bytes[1] = max_data->ingest.raw_bytes[2];
+    max_data->ingest.raw_bytes[2] = tmp;
+
+
     __MAX31855_Convert_Raw_Read(max_data);
 }
 

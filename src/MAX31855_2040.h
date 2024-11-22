@@ -3,7 +3,7 @@
 
 #include "pico/stdlib.h"
 #include "hardware/spi.h"
-
+#include <inttypes.h>
 
 /*
     11-22-2024 Joseph A. De Vico
