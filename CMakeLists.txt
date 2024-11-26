@@ -14,7 +14,7 @@ pico_sdk_init()
 add_executable(
                         ${PROJECT_NAME}
                         example.c
-                        ../src/MAX31855_2040.c
+                        src/MAX31855_2040.c
                         )
 
 target_link_libraries(
@@ -24,7 +24,7 @@ target_link_libraries(
                         )
 
 
-add_library(MAX31855 ../src/MAX31855_2040.c ../src/MAX31855_2040.h)
+add_library(MAX31855 src/MAX31855_2040.c src/MAX31855_2040.h)
 
 target_link_libraries(MAX31855
     pico_stdlib
