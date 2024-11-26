@@ -42,11 +42,22 @@ void __MAX31855_Convert_Raw_Read(struct MAX31855_DATA *max_data){
 
 // Blocking Read of Full 32 Bit Insternal Memory
 void MAX31855_Read_Blocking(spi_inst_t *spi, struct MAX31855_DATA *max_data){
+    uint32_t reg_read;
     gpio_put(max_data->cs_pin, 0);
-    spi_read_blocking(spi, 0x00, max_data->ingest.raw_bytes, sizeof(uint32_t));
+    spi_read_blocking(spi, 0x00, (uint8_t *)&reg_read, sizeof(uint32_t));
     gpio_put(max_data->cs_pin, 1);
 
     // Flip bytes to correct endianness
+#ifdef M0_PLUS
+#warning "Compiling for M0+ Architecture!"
+    __asm
+    (
+        "REV %0, %1" : "=&r" (max_data->ingest.raw) : "r" (reg_read)
+    );
+#else
+#warning "Compiling for Generic Architecture!"
+    max_data->ingest.raw = reg_read;
+
     uint8_t tmp = max_data->ingest.raw_bytes[0];
     max_data->ingest.raw_bytes[0] = max_data->ingest.raw_bytes[3];
     max_data->ingest.raw_bytes[3] = tmp;
@@ -54,7 +65,8 @@ void MAX31855_Read_Blocking(spi_inst_t *spi, struct MAX31855_DATA *max_data){
     tmp = max_data->ingest.raw_bytes[1];
     max_data->ingest.raw_bytes[1] = max_data->ingest.raw_bytes[2];
     max_data->ingest.raw_bytes[2] = tmp;
-
+#endif
+    
 
     __MAX31855_Convert_Raw_Read(max_data);
 }

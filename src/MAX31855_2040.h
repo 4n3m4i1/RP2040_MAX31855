@@ -5,6 +5,8 @@
 #include "hardware/spi.h"
 #include <inttypes.h>
 
+#define M0_PLUS     // Optimize endianness correction
+
 /*
     11-22-2024 Joseph A. De Vico
 
